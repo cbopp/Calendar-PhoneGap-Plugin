@@ -455,7 +455,7 @@ public abstract class AbstractCalendarAccessor {
     } else {
       //CalendarID
       selection += CalendarContract.Instances.CALENDAR_ID  + " = ?";
-      selectionList.add(calendarId);
+      selectionList.add(String.valueOf(calendarId));
 
       if (title != null) {
         selection += " AND " + Events.TITLE + " LIKE ?";
