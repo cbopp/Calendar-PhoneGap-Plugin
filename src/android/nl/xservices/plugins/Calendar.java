@@ -485,16 +485,21 @@ public class Calendar extends CordovaPlugin {
       cordova.getThreadPool().execute(new Runnable() {
         @Override
         public void run() {
+          try {
+            boolean deleteResult = getCalendarAccessor().deleteEventFromNamedCalendar(
+                null,
+                jsonFilter.optLong("startTime"),
+                jsonFilter.optLong("endTime"),
+                getPossibleNullString("title", jsonFilter),
+                getPossibleNullString("location", jsonFilter),
+	        jsonFilter.getInt("calendarName"));
 
-          boolean deleteResult = getCalendarAccessor().deleteEventFromNamedCalendar(
-              null,
-              jsonFilter.optLong("startTime"),
-              jsonFilter.optLong("endTime"),
-              getPossibleNullString("title", jsonFilter),
-              getPossibleNullString("location", jsonFilter),
-	      jsonFilter.getInt("calendarName"));
+            callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, deleteResult));
 
-          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, deleteResult));
+          } catch (JSONException e) {
+            System.err.println("Exception: " + e.getMessage());
+            callback.error(e.getMessage());
+          }
         }
       });
     } catch (JSONException e) {
