@@ -420,6 +420,92 @@ public abstract class AbstractCalendarAccessor {
     return nrDeletedRecords > 0;
   }
 
+  public boolean deleteEventFromNamedCalendar(Uri eventsUri, long startFrom, long startTo, String title, String location, int calendarId ) {
+    ContentResolver resolver = this.cordova.getActivity().getApplicationContext().getContentResolver();
+    Event[] events = fetchEventInstancesFromCalendar(null, title, location, "", startFrom, startTo, calendarId);
+    int nrDeletedRecords = 0;
+    if (events != null) {
+      for (Event event : events) {
+        Uri eventUri = ContentUris.withAppendedId(eventsUri, Integer.parseInt(event.eventId));
+        nrDeletedRecords = resolver.delete(eventUri, null, null);
+      }
+    }
+    return nrDeletedRecords > 0;
+  }
+
+
+  private Event[] fetchEventInstancesFromCalendar(String eventId, String title, String location, String notes, long startFrom, long startTo, int calendarId) {
+    String[] projection = {
+        this.getKey(KeyIndex.INSTANCES_ID),
+        this.getKey(KeyIndex.INSTANCES_EVENT_ID),
+        this.getKey(KeyIndex.INSTANCES_BEGIN),
+        this.getKey(KeyIndex.INSTANCES_END)
+    };
+
+    String sortOrder = this.getKey(KeyIndex.INSTANCES_BEGIN) + " ASC, " + this.getKey(KeyIndex.INSTANCES_END) + " ASC";
+    // Fetch events from instances table in ascending order by time.
+
+    // filter
+    String selection = "";
+    List<String> selectionList = new ArrayList<String>();
+
+    if (eventId != null) {
+      selection += CalendarContract.Instances.EVENT_ID + " = ?";
+      selectionList.add(eventId);
+    } else {
+      //CalendarID
+      selection += CalendarContract.Instances.CALENDAR_ID  + " = ?";
+      selectionList.add(calendarId);
+
+      if (title != null) {
+        selection += " AND " + Events.TITLE + " LIKE ?";
+        selectionList.add("%" + title + "%");
+      }
+      if (location != null && !location.equals("")) {
+        selection += " AND " + Events.EVENT_LOCATION + " LIKE ?";
+        selectionList.add("%" + location + "%");
+      }
+      if (notes != null && !notes.equals("")) {
+        selection += " AND " + Events.DESCRIPTION + " LIKE ?";
+        selectionList.add("%" + notes + "%");
+      }
+    }
+
+    String[] selectionArgs = new String[selectionList.size()];
+    Cursor cursor = queryEventInstances(startFrom, startTo, projection, selection, selectionList.toArray(selectionArgs), sortOrder);
+    if (cursor == null) {
+      return null;
+    }
+    Event[] instances = null;
+    if (cursor.moveToFirst()) {
+      int idCol = cursor.getColumnIndex(this.getKey(KeyIndex.INSTANCES_ID));
+      int eventIdCol = cursor.getColumnIndex(this.getKey(KeyIndex.INSTANCES_EVENT_ID));
+      int beginCol = cursor.getColumnIndex(this.getKey(KeyIndex.INSTANCES_BEGIN));
+      int endCol = cursor.getColumnIndex(this.getKey(KeyIndex.INSTANCES_END));
+      int count = cursor.getCount();
+      int i = 0;
+      instances = new Event[count];
+      do {
+        // Use the startDate/endDate time from the instances table. For recurring
+        // events the events table contain the startDate/endDate time for the
+        // origin event (as you would expect).
+        instances[i] = new Event();
+        instances[i].id = cursor.getString(idCol);
+        instances[i].eventId = cursor.getString(eventIdCol);
+        instances[i].startDate = cursor.getString(beginCol);
+        instances[i].endDate = cursor.getString(endCol);
+        i += 1;
+      } while (cursor.moveToNext());
+    }
+
+    // if we don't find the event by id, try again by title etc - inline with iOS logic
+    if ((instances == null || instances.length == 0) && eventId != null) {
+      return fetchEventInstances(null, title, location, notes, startFrom, startTo);
+    } else {
+      return instances;
+    }
+  }
+
   public String createEvent(Uri eventsUri, String title, long startTime, long endTime, String description,
                             String location, Long firstReminderMinutes, Long secondReminderMinutes,
                             String recurrence, int recurrenceInterval, Long recurrenceEndTime, Integer calendarId, String url) {
@@ -508,7 +594,9 @@ public abstract class AbstractCalendarAccessor {
       Uri calUri = CalendarContract.Calendars.CONTENT_URI;
       ContentValues cv = new ContentValues();
       cv.put(CalendarContract.Calendars.ACCOUNT_NAME, "AccountName");
+      cv.put(CalendarContract.Calendars.OWNER_ACCOUNT, "AccountName");
       cv.put(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL);
+      cv.put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL, CalendarContract.Calendars.CAL_ACCESS_READ); //Read only, don't wan't anyone tempering with my event notes...
       cv.put(CalendarContract.Calendars.NAME, calendarName);
       cv.put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, calendarName);
       if (calendarColor != null) {

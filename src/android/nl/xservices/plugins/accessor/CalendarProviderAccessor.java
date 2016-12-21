@@ -87,6 +87,12 @@ public class CalendarProviderAccessor extends AbstractCalendarAccessor {
   }
 
   @Override
+  public boolean deleteEventFromNamedCalendar(Uri eventsUri, long startFrom, long startTo, String title, String location, int calendarId ) {
+    eventsUri = eventsUri == null ? Uri.parse(CONTENT_PROVIDER + CONTENT_PROVIDER_PATH_EVENTS) : eventsUri;
+    return super.deleteEvent(eventsUri, startFrom, startTo, title, location, calendarId);
+  }
+
+  @Override
   public String createEvent(Uri eventsUri, String title, long startTime, long endTime,
                           String description, String location, Long firstReminderMinutes, Long secondReminderMinutes,
                           String recurrence, int recurrenceInterval, Long recurrenceEndTime, Integer calendarId,
