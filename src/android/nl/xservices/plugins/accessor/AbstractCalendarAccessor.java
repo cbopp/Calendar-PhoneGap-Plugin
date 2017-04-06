@@ -604,7 +604,7 @@ public abstract class AbstractCalendarAccessor {
         cv.put(CalendarContract.Calendars.CALENDAR_COLOR, Color.parseColor(calendarColor));
       }
       cv.put(CalendarContract.Calendars.MAX_REMINDERS, 2);
-      cv.put(CalendarContract.Calendars.ALLOWED_REMINDERS, "METHOD_DEFAULT");
+      cv.put(CalendarContract.Calendars.ALLOWED_REMINDERS, 1);
       cv.put(CalendarContract.Calendars.VISIBLE, 1);
       cv.put(CalendarContract.Calendars.SYNC_EVENTS, 0);
 
